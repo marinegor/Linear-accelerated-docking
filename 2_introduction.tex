@@ -1,0 +1,49 @@
+\section{Introduction}
+
+See comments in the source file.
+% Seminal papers:
+ 
+%  - ultra-large docking (AmpC and D4)
+%  - MT1 and sigma-1 receptor
+%  - V-SYNTHES
+
+% Review papers:
+% 	- review of different chemical spaces
+% 		- all on-demand spaces are combinatorial
+% 		- enumerated spaces are probably not, but synthesisability may vary
+% 	- "ultra-large" cheminformatics review
+% 		- similarity and pharmacophore searches are already relatively fast
+% 	- Shoichet's guide to large-scale docking campaings 
+
+% Technical papers
+%  - deep docking
+%  	- first of its kind
+%  	- large database
+%  	- first showed substantial reduction (median 20x)
+%  	- heavy model (Keras + V100 GPU)
+%  - de Graaf et al
+%  	- tried not only docking but some QM
+%  	- explored recommending systems approaches
+%  - Shoichet group paper (2021)
+%  	- also heavy model (DeepChem)
+%  - preprint about logistic regression
+%  	- tried different fingerprints
+%  	- compared themselves with de Graaf et al 
+%  	- probably first lightweight model
+%  - lean docking
+%  	- not really interesting
+%  	- lightweight model
+%  	- don't talk about "virtual hits"
+
+% Other approaches:
+% 	- generative modelling (cite some review)
+% 	- genetic algorithms 
+% 	- v-synthes + biosolveit's similar approach
+
+% Why are we interesting:
+% 	- compare different "classical" models
+% 	- "explore" exploration-exploitation tradeoff using docking inaccuarcy (many other papers point that out)
+% 	- show two different docking algorithms
+% 	- prove that lightweight models are very good
+% 	- show "upper bound" for the model
+% 	- we measure time and compare it to actual docking
