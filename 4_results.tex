@@ -10,9 +10,11 @@ In order to select most promising models for active-learning iterations, we firs
 
 First, we selected diverse regression models (figure \ref{fig:fig_4}, first row), and compared them with lower-bond and upper-bond baselines. Namely, we trained the regression models to predict the docking score directly, then selected top-1\% from the sorted list as model's hits, and compared model's hits with actual top-1\% of the list. Lower-bond baselines included sklearn's DummyRegressor, as well as custom models yielding random score from either normal or uniform distribution, matching original distribution of scores (RandomUniform and RandomGaussian regressors, respectively). For upper-bond baseline, we used docking scores, provided by the second run of Molsoft's ICM (figure \ref{fig:fig_1}) without fixing a seed value.
 
-For more complicated models such as random forest and decision tree regressors, an increase in prediction quality with increase of model training size. 
+From this run, it is clear that linear regression performs at the level of more sophisticated models. Thus, we selected these models to test on dataset of 5zty docking scores. Surprisingly, linear regression itself showed baseline performance, while it's weighted versions, such as Lasso and Ridge regression, performed at the level with more sophisticated models.
 
-As shown in figure \ref{fig:fig_4}, both on retrospective data \cite{ultralarge_docking_first} and data present in this paper, different models show comparable recall, that also becomes more reproducible with the increase of the train size dataset. Expectedly, more complex models such as RandomForestRegressor show superior performance compared to more simple models, albeit at the expense of the significantly increased training and inference time (up to 3 orders of magnitude). Note that here the train dataset size and inference size are related as 4:1 due to 5-fold validation (see \ref{subsec:prediction}). 
+Last, we tested both sophisticated regression models and linear models, on known datasets obtained with DOCK \cite{ultralarge_docking_first}. As expected, different models show comparable recall, that also becomes more reproducible with the increase of the train size dataset. More complex models such as RandomForestRegressor show superior performance compared to more simple models. 
+
+Single-batch models share multiple trends for all models and train sizes. First, all models outperform the random baselines, as expected. Surprisingly, linear models with and without regularization don't differ by their performance. For more complicated models such as random forest and decision tree regressors, an increase in prediction quality with increase of model training size. 
 
 Paragraph about effect of normalization
 
