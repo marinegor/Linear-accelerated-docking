@@ -10,13 +10,9 @@ In order to select most promising models for active-learning iterations, we firs
 
 First, we selected diverse regression models (figure \ref{fig:fig_4}, first row), and compared them with lower-bond and upper-bond baselines. Namely, we trained the regression models to predict the docking score directly, then selected top-1\% from the sorted list as model's hits, and compared model's hits with actual top-1\% of the list. Lower-bond baselines included sklearn's DummyRegressor, as well as custom models yielding random score from either normal or uniform distribution, matching original distribution of scores (RandomUniform and RandomGaussian regressors, respectively). For upper-bond baseline, we used docking scores, provided by the second run of Molsoft's ICM (figure \ref{fig:fig_1}) without fixing a seed value.
 
-
-
 For more complicated models such as random forest and decision tree regressors, an increase in prediction quality with increase of model training size. 
 
 As shown in figure \ref{fig:fig_4}, both on retrospective data \cite{ultralarge_docking_first} and data present in this paper, different models show comparable recall, that also becomes more reproducible with the increase of the train size dataset. Expectedly, more complex models such as RandomForestRegressor show superior performance compared to more simple models, albeit at the expense of the significantly increased training and inference time (up to 3 orders of magnitude). Note that here the train dataset size and inference size are related as 4:1 due to 5-fold validation (see \ref{subsec:prediction}). 
-
-Paragraph about docking-as-predictor performance in single-shot.
 
 Paragraph about effect of normalization
 
@@ -27,8 +23,7 @@ Paragraph about effect of normalization
 % 	- C: time vs performance distribution + actual docking time cutoff
 \centering
 \includegraphics[width=0.8\textwidth]{figures/Figure_4.png}
-% \includegraphics[width=0.8\textwidth]{figures/Figure_4_gain.png}
-\caption{Model performance versus training and inference time (in logarithmic scale)}
+\caption{Model performance for multiple regression models and their baselines on 4 datasets present in the study. \texttt{recall\_score} shows the share of interception of top-1\% of the regressor's predictions with the actual top-1\%, sorted by docking score}
 \label{fig:fig_4}
 \end{figure}
 
