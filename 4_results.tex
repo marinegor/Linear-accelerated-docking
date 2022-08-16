@@ -34,6 +34,7 @@ Paragraph about effect of normalization
 
 To optimize meta-parameters of the active learning regime, we selected LinearRegression as the "base" learner. The choice was based on it's superior speed (see fig. TODO) and performance comparable with more complex models (figure \ref{fig:fig_3}). Active learning models were compared by their ability to retrieve top-1\% hits from the \texttt{4eiy} dataset, and compared with upper-and lower-bond baselines, as described in \ref{subsection:single-shot}. Each model had a fixed batch per single iteration, so that exactly \texttt{train\_size} scores were added to the training data on each iteration. Also, we tested the effect of the increasing (\texttt{add\_to\_train=True}) or constant (\texttt{add\_to\_train=False}) training dataset size, with the latter presumably providing the ability for the model to escape local minima in the chemical space. Finally, we tested the selection regime for the next batch: with \texttt{LastModel}, only the model from the previous batch was taken into account; with \texttt{MeanRank}, the mean molecule rank among models on all iterations was used as its score; and with \texttt{TopFromEveryModel}, all models from all iterations contributed equal amount of molecules to the next batch.
 
+
 % How did we come up with iterations scheme:
 % 	- compared different train sizes
 % 	- compared different regimes (add/noadd)
@@ -52,3 +53,8 @@ To optimize meta-parameters of the active learning regime, we selected LinearReg
 \label{fig:fig_3}
 \end{figure}
 
+Interestingly, the \texttt{train\_size} effect for the active learning regime was different from the single-batch mode. Namely, smaller training size resulted in better model performance regardless of other active learning meta parameters (figure \ref{fig:fig_3}). Smallest training size of $8~000$ resulted in retrieval of $\approx80\%$ of top-1\% molecules, while largest training size of $120~000$ resulted in mere $\approx60\%$, even though mean recall for a single-batch regime is $0.11(7)$ and $0.15(1)$, respectively. Besides, neither the next batch selection regime nor the \texttt{add\_to\_train} parameter do not have an influence within the observed data.
+
+Paragraph about comparison with upper- and lower-bonds.
+
+Paragraph about comparison of upper-bond between selection regime (probably one selection  regime is just better than the other one, if we have "ideal" data).
