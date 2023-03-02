@@ -21,7 +21,7 @@ Molecular docking scores were downloaded from Figshare (for AmpC and D4 datasets
 
 
 \subsection{Single-shot prediction of virtual screening hits}
-We tested classic machine learning algorithms for their ability to predict virtual screening hits (VSH). Namely, we labeled top-1\% of the ligands in datasets AmpC, D4, AA2AR-1 and CB2-1 as hits, and the rest as non-hits, and tested machine learning algorithms in their ability to recover VSHs from the ligand pool after training on a small subset of molecules with their scores. 
+We tested classic machine learning algorithms for their ability to predict virtual screening hits (VSH). Namely, we labeled top-1\% of the ligands in datasets AmpC, D4, AA2AR-1 and CB2-1 as hits, and the rest as non-hits, and tested machine learning algorithms in their ability to recover VSHs from the ligand pool after training on a small subset of molecules with their scores. We deliberately choose a large percentage, top-1\%, compared to the earlier works \cite{Graff2021AcceleratingLearning, logistic_regression, Yang2021_shoichet_active_learning} due to the small size of the library in order to decrease the subsequent deviation of the performance metric.
 
 As for algorithm selection, we choose both "lightweight" and "heavy" models in both regression (predicting the docking score from modlecule's Morgan fingerprint directly) and classification (predicting label of each ligand) regimes. Namely, we tested following models (as named in scikit-learn library): LinearRegressor, Ridge/RidgeCV, LinearSVR, KNeighboursRegressor (with 1 and 5 neighbours), KNeighboursRegressor (with Jaccard metric), DecisionTreeRegressor, RandomForestRegressor, KNeighboursClassifier (with 5 neighbours), DecisionTreeClassifier, and SGDClassifier. All models were imported from scikit-learn REF Python library (ver. TODO). 
 
@@ -99,34 +99,34 @@ For model ensembling, we used 3 different regimes. LastModel used no ensembling 
 
 %quality metric?
 
-\subsubsection{Iteration scheme}
+% \subsubsection{Iteration scheme}
 
-In iterative algorithms, only regression methods were used.
-The pipeline of the algorithm consists of the following steps:
-\begin{enumerate}
-    \item In the initial step, a predefined number of molecules are "docked" (practically, taken from the list of already docked compounds) to provide a test set;
-    \item The ML model is trained and integrated then into a complex model;
-    \item The complex model predicts the docking outcome;
-    \item The batch of molecules is docked: if the number of docking hits is larger than a predefined size, then the demanded number of hits are sampled;
-    In the opposite situation, randomly sampled molecules from non-hits are added to all docking hits in order to gain the required amount;
-    \item Depending on the algorithm protocol (Fig. \ref{TrainSetSelection}), the batch from the precious step is either added to the train dataset, or is utilized as a train dataset itself;
-    \item Steps 2-5 are repeated until the predetermined number of iteration is reached.
-\end{enumerate}
+% In iterative algorithms, only regression methods were used.
+% The pipeline of the algorithm consists of the following steps:
+% \begin{enumerate}
+%     \item In the initial step, a predefined number of molecules are "docked" (practically, taken from the list of already docked compounds) to provide a test set;
+%     \item The ML model is trained and integrated then into a complex model;
+%     \item The complex model predicts the docking outcome;
+%     \item The batch of molecules is docked: if the number of docking hits is larger than a predefined size, then the demanded number of hits are sampled;
+%     In the opposite situation, randomly sampled molecules from non-hits are added to all docking hits in order to gain the required amount;
+%     \item Depending on the algorithm protocol (Fig. \ref{TrainSetSelection}), the batch from the precious step is either added to the train dataset, or is utilized as a train dataset itself;
+%     \item Steps 2-5 are repeated until the predetermined number of iteration is reached.
+% \end{enumerate}
 
-There are two ways to update train dataset from iteration to iteration.
-On the one hand, it is profitable to make use of all the docked molecules, because more information is gathered.
-Most likely that single models in one round of iteration algorithm will be similar to each other and prioritize the molecules which properties close to each other.
-On the other hand, the selection of only the latest batch of docked molecules for training may cause more diversity in single models' parameters.
-Thus, models from different step will search for docking hits in various parts of chemical space.
-Both approaches were tested within the iterative algorithms.
+% There are two ways to update train dataset from iteration to iteration.
+% On the one hand, it is profitable to make use of all the docked molecules, because more information is gathered.
+% Most likely that single models in one round of iteration algorithm will be similar to each other and prioritize the molecules which properties close to each other.
+% On the other hand, the selection of only the latest batch of docked molecules for training may cause more diversity in single models' parameters.
+% Thus, models from different step will search for docking hits in various parts of chemical space.
+% Both approaches were tested within the iterative algorithms.
 
-Three types of complex models were employed in the algorithm:
-\begin{itemize}
-    \item \textbf{Last Model}: ML model from the latest iteration is treated as a complex model and used to predict docking outcomes.
-    After the prediction, top-k\% of predicted scores become hits;
-    \item \textbf{Top from every model}: on the $\text{n}^{th}$ iteration, each model makes a prediction and top-(k/n)\% of predicted scores from each model constitute complex model's hits (duplicates are deleted);
-    \item \textbf{Mean Rank}: for each compound, the positions in the ratings of all models are averaged; the k\% of the compounds with the smallest average positions are handled as hits.
-\end{itemize}
+% Three types of complex models were employed in the algorithm:
+% \begin{itemize}
+%     \item \textbf{Last Model}: ML model from the latest iteration is treated as a complex model and used to predict docking outcomes.
+%     After the prediction, top-k\% of predicted scores become hits;
+%     \item \textbf{Top from every model}: on the $\text{n}^{th}$ iteration, each model makes a prediction and top-(k/n)\% of predicted scores from each model constitute complex model's hits (duplicates are deleted);
+%     \item \textbf{Mean Rank}: for each compound, the positions in the ratings of all models are averaged; the k\% of the compounds with the smallest average positions are handled as hits.
+% \end{itemize}
 
 %quality metric?
 
