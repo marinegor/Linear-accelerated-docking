@@ -2,28 +2,28 @@
 For this study, we generated 4 different datasets with molecular docking scores (datasets AA2AR\_1/2 and CB2\_1/2), and used 2 datasets available in open-source \cite{ultralarge_docking_first} (datasets AmpC and D4). Score distribution is shown on Fig. \ref{fig:fig_1}.
 
 \subsection{Molecular docking}
-To obtain scores for AA2R\_1/2 and CB2\_1/2, we performed molecular docking in ICM-Pro molecular modeling software (ver. 3.9.1). Namely, we used high-resolution X-ray crystal structures of human cannabinoid receptor 2 (CB2, PDB ID 5ZTY) REF and adenosine receptor A2 (AA2AR, PDB ID 4EIY). Models were prepared as described REF. Namely, we loaded them into ICM-Pro package, removed ligands and converted the receptor models into an ICM format using default settings, which includes building missing side chains, adding hydrogens, energy-based Gln/Asn/His conformation optimization, and removal of all water molecules. Docking box was selected around co-crystallized ligands.
+To obtain scores for AA2AR\_1/2 and CB2\_1/2, we performed molecular docking in ICM-Pro molecular modeling software (ver. 3.9.1). Namely, we used high-resolution X-ray crystal structures of human cannabinoid receptor 2 (CB2, PDB ID 5ZTY) REF and adenosine receptor A2 (AA2AR, PDB ID 4EIY). Models were prepared as described REF. Namely, we loaded them into ICM-Pro package, removed ligands and converted the receptor models into an ICM format using default settings, which includes building missing side chains, adding hydrogens, energy-based Gln/Asn/His conformation optimization, and removal of all water molecules. Docking box was selected around co-crystallized ligands.
 
-As a screening library, we used randomly selected $1\ 000\ 000$ drug-like ($200 < \text{MW} < 500$, $\text{logP} < 5$) compounds from ZINC20 database REF. We converted compounds from SMILES to three-dimensional SDF  format, added hydrogen atoms and assigned formal charges at pH=7.0 (according to ICM pKa model implemented in ICM-Pro).
+As a screening library, we used randomly selected $1\ 000\ 000$ drug-like ($200 < \text{MW} < 500$, $\text{logP} < 5$) compounds from ZINC20 database \cite{Irwin2020ZINC20Discovery} . We converted compounds from SMILES to three-dimensional SDF  format, added hydrogen atoms and assigned formal charges at pH=7.0 (according to ICM pKa model implemented in ICM-Pro).
 
 Docking was performed using ICM-Pro package without receptor flexibility, and with ligand sampling thoroughness (effort) 1.0.
 
 \subsection{Preparation of supervised learning dataset}
-Molecular docking scores were downloaded from Figshare (for AmpC and D4 datasets) or obtained from resulting SDF files with the best ligand pose (for AA2AR and CB2 datasets). For AmpC and D4, we selected random subsets of 1 million molecules using `shuf scores.txt | head -n 1000000` command in Linux. Then, we generated Morgan fingerprints (size 2048, radius 2) using $\text{chemfp}$ for all molecules from their SMILES strings, and concatenated with their respective docking scores to obtain final supervised learning datasets with fingerprints as features and scores as values for prediction. Docking score distributions (for negative scores only) is shown on Figure \ref{fig:fig_1}.
+Molecular docking scores were downloaded from Figshare (for AmpC and D4 datasets) or obtained from resulting SDF files with the best ligand pose (for AA2AR and CB2 datasets). For AmpC and D4, we selected random subsets of 1 million molecules using `shuf scores.txt | head -n 1000000` command in Linux. Then, we generated Morgan fingerprints (size 2048, radius 2) using $\text{chemfp}$ \cite{Dalke2019} for all molecules from their SMILES strings, and concatenated with their respective docking scores to obtain final supervised learning datasets with fingerprints as features and scores as values for prediction. Docking score distributions are shown on Figure \ref{fig:fig_1}.
 
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.8\textwidth]{figures/Figure_1.png}
+\includegraphics[width=0.8\textwidth]{figures/scores_distribution_v2.png}
 \caption{distributions of scores for datasets used in the study. Histogram (blue) shows log-scale score distribution, while plot (orange) shows cumulative distribution of scores. Horizontal line (black) shows cutoff for top-1\% of scores. TODO: 1) add second docking of CB2 2) change labels to receptor names 3) add docking program names to caption 4) maybe add figure with receptor pocket and orthosteric ligand in it}
 \label{fig:fig_1}
 \end{figure}
 
 
 \subsection{Single-shot prediction of virtual screening hits}
-We tested classic machine learning algorithms for their ability to predict virtual screening hits (VSH). Namely, we labeled top-1\% of the ligands in datasets AmpC, D4, AA2AR-1 and CB2-1 as hits, and the rest as non-hits, and tested machine learning algorithms in their ability to recover VSHs from the ligand pool after training on a small subset of molecules with their scores. We deliberately choose a large percentage, top-1\%, compared to the earlier works \cite{Graff2021AcceleratingLearning, logistic_regression, Yang2021_shoichet_active_learning} due to the small size of the library in order to decrease the subsequent deviation of the performance metric.
+We tested classic machine learning algorithms for their ability to predict virtual screening hits (VSH). Namely, we labeled top-1\% of the ligands in datasets AmpC, D4, AA2AR\_1 and CB2\_1 as hits, and the rest as non-hits, and tested machine learning algorithms in their ability to recover VSHs from the ligand pool after training on a small subset of molecules with their scores. We deliberately choose a large percentage, top-1\%, compared to the earlier works \cite{Graff2021AcceleratingLearning, logistic_regression, Yang2021_shoichet_active_learning} due to the small size of the library in order to decrease the subsequent deviation of the performance metric.
 
-As for algorithm selection, we choose both "lightweight" and "heavy" models in both regression (predicting the docking score from modlecule's Morgan fingerprint directly) and classification (predicting label of each ligand) regimes. Namely, we tested following models (as named in scikit-learn library): LinearRegressor, Ridge/RidgeCV, LinearSVR, KNeighboursRegressor (with 1 and 5 neighbours), KNeighboursRegressor (with Jaccard metric), DecisionTreeRegressor, RandomForestRegressor, KNeighboursClassifier (with 5 neighbours), DecisionTreeClassifier, and SGDClassifier. All models were imported from scikit-learn REF Python library (ver. TODO). 
+As for algorithm selection, we choose both "lightweight" and "heavy" models in both regression (predicting the docking score from molecule's Morgan fingerprint directly) and classification (predicting label of each ligand) regimes. Namely, we tested following models (as named in scikit-learn library): LinearRegressor, Ridge/RidgeCV, LinearSVR, KNeighboursRegressor (with 1 and 5 neighbours), KNeighboursRegressor (with Jaccard metric), DecisionTreeRegressor, RandomForestRegressor, KNeighboursClassifier (with 5 neighbours), DecisionTreeClassifier, and SGDClassifier. All models were imported from scikit-learn REF Python library (ver. 0.23.2). 
 
 For cross-validation, we performed 5-fold stratified cross-validation. Namely, for each train size $n$ we selected $1.2n$ ligands for each fold, labeled top-1\% as hits and used stratified 5-fold split. This way, models were trained on $n$ ligands and tested on $n/5$ ligands, with $1:99$ imbalance in both train and test sets.
 
@@ -36,7 +36,7 @@ For AA2AR and CB2 datasets we also constructed lower- and upper-bound baselines.
 After obtaining results for single-shot model performance, we went to explore the active learning regime. In this regime, a \textit{base model} is trained at each step, and its predictions are than docked at the next step, instead of randomly chosen ligands. First, we estimated the effect of batch size on the overall virtual screening performance in the active learning regime. In order to do that, we compared few scenarios: 
 \begin{enumerate*}[label=(\roman*)]
     \item memory-less active learning model with LinearRegression as a base model;
-    \item extrapolation of a single-shot prediction, inder assumption that recall remains constant;
+    \item extrapolation of a single-shot prediction, under assumption that recall remains constant;
     \item lower-bond baseline of random docking score assignment;
     \item upper-bond baseline, picking docking score from a second docking attempt (for AA2AR and CB2 datasets).
 \end{enumerate*}
@@ -45,7 +45,7 @@ In each scenario, a base learning model was initially trained on random $\texttt
 
 In order to extrapolate single-shot model performance, we assumed that the model performance doesn't change with the deterioration of the ligand pool, and recall remains the same. Given batch size $n$, total number of ligands $N$, recall $r$ and hits fraction $\beta=0.01$, at iteration 0 model retrieves $h_0 = n\beta$ VHSs. At iteration $j$, model retrieves fraction $r$ of the remaining VHS: $h_j = ( N\beta - \sum_{i=0}^{j-1}h_i ) \cdot r$. Subsequently, the total number of hits retrieved by step $j$ is $H_j = \sum_{i=0}^{j} h_i$.
 
-To evaluate performance of the active learning regime, we calculated number of retrieved VSHs. For each batch size and dataset, we performed 5 attempts, using the same fold labels between different batch sizes.
+To evaluate performance of the active learning regime, we calculated number of retrieved VSHs. For each batch size and dataset, we performed 3 attempts, using the same fold labels between different batch sizes.
 
 \subsection{Active learning regime parameters}
 
