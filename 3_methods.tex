@@ -12,14 +12,6 @@ Docking was performed using ICM-Pro package without receptor flexibility, and wi
 Molecular docking scores were downloaded from Figshare (for AmpC and D4 datasets) or obtained from resulting SDF files with the best ligand pose (for AA2AR and CB2 datasets). For AmpC and D4, we selected random subsets of 1 million molecules using `shuf scores.txt | head -n 1000000` command in Linux. Then, we generated Morgan fingerprints (size 2048, radius 2) using $\text{chemfp}$ \cite{Dalke2019} for all molecules from their SMILES strings, and concatenated with their respective docking scores to obtain final supervised learning datasets with fingerprints as features and scores as values for prediction. Docking score distributions are shown on Figure \ref{fig:fig_1}.
 
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=0.8\textwidth]{figures/scores_distribution_v2.png}
-\caption{distributions of scores for datasets used in the study. Histogram (blue) shows log-scale score distribution, while plot (orange) shows cumulative distribution of scores. Horizontal line (black) shows cutoff for top-1\% of scores. TODO: 1) add second docking of CB2 2) change labels to receptor names 3) add docking program names to caption 4) maybe add figure with receptor pocket and orthosteric ligand in it}
-\label{fig:fig_1}
-\end{figure}
-
-
 \subsection{Single-shot prediction of virtual screening hits}
 We tested classic machine learning algorithms for their ability to predict virtual screening hits (VSH). Namely, we labeled top-1\% of the ligands in datasets AmpC, D4, AA2AR\_1 and CB2\_1 as hits, and the rest as non-hits, and tested machine learning algorithms in their ability to recover VSHs from the ligand pool after training on a small subset of molecules with their scores. We deliberately choose a large percentage, top-1\%, compared to the earlier works \cite{Graff2021AcceleratingLearning, logistic_regression, Yang2021_shoichet_active_learning} due to the small size of the library in order to decrease the subsequent deviation of the performance metric.
 
@@ -63,6 +55,23 @@ Also, similarly to the previous section, we used model recall, i.e. the amount o
 For model ensembling, we used 3 different regimes. LastModel used no ensembling altogether, accounting only for the latest model predictions. MeanRank for each ligand assigned rank $p_i$ by model $i$, and used $\langle p_i \rangle$ as a ligand score. Finally, TopFromEveryModel used smaller portion of each model's top ($k$ times smaller for $k$ different models), and compiled individual tops into an ensemble prediction.
 
 %% --------------------------------
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/scores_distribution_v2.png}
+\caption{Distributions of scores for datasets used in the study. Histogram (blue) shows log-scale score distribution, while plot (orange) shows cumulative distribution of scores. Vertical line (black) shows cutoff for top-1\% of scores. TODO: \textit{change Dock to DOCK}}
+\label{fig:fig_1}
+\end{figure}
+
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/Figure_N_iteration_methods.png}
+\caption{Overview of the active learning ranking schemes. \textit{TODO: make them CamelCaseTitles, very likely -- re-draw (arrows ugly, alignment sucks)}}
+\label{fig:fig_2_scheme}
+\end{figure}
+
+
 
 % \subsection{Prediction of docking scores} \label{subsec:prediction}
 
