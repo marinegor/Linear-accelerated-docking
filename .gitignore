@@ -1,5 +1,8 @@
 *.json
 *.pickle
 *.pkl
+*.png
+data
+notebooks/.ipynb_checkpoints
 
 env/
