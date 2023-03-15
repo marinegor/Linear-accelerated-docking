@@ -4,7 +4,7 @@ For this study, we generated 4 different datasets with molecular docking scores 
 \subsection{Molecular docking}
 To obtain scores for AA2AR\_1/2 and CB2\_1/2, we performed molecular docking in ICM-Pro molecular modeling software (ver. 3.9.1). Namely, we used high-resolution X-ray crystal structures of human cannabinoid receptor 2 (CB2, PDB ID 5ZTY) and adenosine receptor A2 (AA2AR, PDB ID 4EIY). Models were prepared as described in the Molsoft ICM user guide \cite{molsoft_guide}. Namely, we loaded them into ICM-Pro package, removed ligands and converted the receptor models into an ICM format using default settings, which includes building missing side chains, adding hydrogens, energy-based Gln/Asn/His conformation optimization, and removal of all water molecules. Docking box was selected around co-crystallized ligands.
 
-As a screening library, we used randomly selected $1\ 000\ 000$ drug-like ($200 < \text{MW} < 500$, $\text{logP} < 5$) compounds from ZINC20 database \cite{Irwin2020ZINC20Discovery} . We converted compounds from SMILES to three-dimensional SDF  format, added hydrogen atoms and assigned formal charges at pH=7.0 (according to ICM pKa model implemented in ICM-Pro).
+As a screening library, we used randomly selected $1\ 000\ 000$ drug-like ($200 < \texttt{MW} < 500$, $\texttt{logP} < 5$) compounds from ZINC20 database \cite{Irwin2020ZINC20Discovery} . We converted compounds from SMILES to three-dimensional SDF  format, added hydrogen atoms and assigned formal charges at pH=7.0 (according to ICM pKa model implemented in ICM-Pro).
 
 Docking was performed using ICM-Pro package without receptor flexibility, and with ligand sampling thoroughness (effort) 1.0.
 
@@ -58,7 +58,7 @@ For model ensembling, we used 3 different regimes. LastModel used no ensembling 
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.8\textwidth]{figures/scores_distribution_v2.png}
+\includegraphics[width=0.8\textwidth]{figures/scores_distribution_v3.pdf}
 \caption{Distributions of scores for datasets used in the study. Histogram (blue) shows log-scale score distribution, while plot (orange) shows cumulative distribution of scores. Vertical line (black) shows cutoff for top-1\% of scores. TODO: \textit{change Dock to DOCK}}
 \label{fig:fig_1}
 \end{figure}
