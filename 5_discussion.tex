@@ -2,28 +2,10 @@
 
 Although this work mainly follows the ideas proposed by the previous works in the area \cite{deepdocking, logistic_regression, Yang2021_shoichet_active_learning, Graff2021AcceleratingLearning}, we deliberately focus on slightly different aspects of the active learning specifically as a solution for the small-molecule docking for ultra-large libraries. 
 
-Given exponentially growing chemical databases \cite{warr_exploration_2022, lyu_modeling_2023}, we focus on the performance of the simplest models such as linear regression, that have been optimized to be computationally efficient for both training and inference on extremely large datasets. Robust performance of the linear regression, shown here, allows one to use vector databases \cite{noauthor_vector_nodate, noauthor_qdrant_nodate, johnson2019_faiss_vector_database} for the pre-computed fingerprints, and extract and compute molecule 3D structures and subsequently dock them only when needed, drastically decreasing the computational requirements for the actual docking.
+Given exponentially growing chemical databases \cite{warr_exploration_2022, lyu_modeling_2023}, we focus on the performance of the simplest models such as linear regression, that have been optimized to be computationally efficient for both training and inference on extremely large datasets. Robust performance of the linear methods shown here, allows one to use vector databases \cite{noauthor_vector_nodate, noauthor_qdrant_nodate, johnson2019_faiss_vector_database} for the pre-computed fingerprints, and extract and compute molecule 3D structures and subsequently dock them only when needed, drastically decreasing the computational requirements for the actual docking.
 
 As shown by comparison with the second docking for CB2 and AA2AR datasets, ligand docking (especially with a low sampling depth) is relatively inaccurate, and is able to retrieve only half of the ligands from the dataset in the active learning regime after docking of the first 10\%. We believe that this intrinsic inaccuracy of this method is what gives the simple linear models such robustness in this case. Due to the limited sampling depth, the docking scores are inaccurate enough so that any complex model won't be able to predict their true value. Hence, model complexity can be reduced drastically without loosing its performance.
 
 Even though for the linear regression the model inference is fast, the actual active learning regime that incorporates memory might substantially increase the inference time for the later stages of the screening, when the number of models for ensembling is large. However, in this work, we show that the simple MeanRank regime that averages molecule ranks for each model, shows superior performance. Luckily, for this type of ensembling, a base model's results can be cached for later, without the need to re-run the model inference at each stage.
 
 Moreover, here we show that state-of-the-art performance can be achieved even without the need for GPU computational resources, which were employed by all but one previous works either in the message-passing neural networks \cite{Graff2021AcceleratingLearning}, as DeepChem models \cite{Yang2021_shoichet_active_learning}, or as multi-layer perceptron \cite{deepdocking}. This can significantly increase the availability of the method. Compared to the preprint \cite{logistic_regression} that also focuses on reducing the accelerated virtual screening costs, we show that incorporation of simple memory mechanisms into the active learning model can substantially increase its performance on both early and late stages of the screening.
-
-
-
-
-% Fig 6: TSNE of linear regression
-
-% Some points to make:
-% 	- TODO: need to compare performance on D4 and AmpC in "large" mode (like fig. 6 from logistic regression preprint)
-% 	- TODO: we still get diverse datasets (BM scaffolds vs iteration)
-% 	- linear models actually do "exploitation-exploration" balance really good: UMAP/tSNE of linear regression coefficients
-% 	- LM can be trained and inferenced without significant memory and CPU consumption and are practically simplest possible models
-% 	- LM are independent of library construction principle (v-synthes and other modern libraries)
-% 	- fingerprints and structures can be pre-computed
-% 	- can be run on a server without GPU
-
-% Fig 7: comparison with other papers
-% 	- A: "iterations" mode with some points marked
-% 	- B: table/histogram/pie chart/whatever with time estimations
