@@ -1,60 +1,24 @@
 \section{Introduction}
 
-% TODO: cite papers from the recent "Ultra-large chemistry" special issue
-Structure-based drug discovery is an approach in target-based drug discovery, relying on presence of three dimensional structure of a biological target. Within this framework, a concept of an ultra-large library docking has emerged in the last few years. In this approach, an ultra-large (typically, more than 100 million compound) virtual library is screened against a known target via structure-based docking, and selected compounds (few 100's) get synthesised and tested experimentally. Virtual library design ensures high synthesizability rate, thereby providing a sufficiently large number of actually tested compounds regardless of the target.
+Structure-based drug discovery is a framework for hit finding and development target-based drug discovery. It relies on the knowledge of three-dimensional structure of a a verified target, either experimental or predicted. The structure is used for modelling of the drug-target interactions and either search for the novel compounds binding the target, or optimization of existing ones.
 
-Recently, ultra-large library docking has shown to provide high-affinity hit compounds for various targets \cite{sigma2_paper, melatonin_paper, ultralarge_docking_first, gorgulla_open-source_2020, beroza_chemical_2022, noauthor_large_nodate, lu_structure-guided_2021, sadybekov_synthon-based_2022} after experimental testing of only few hundreds of compounds. However, such approach requires substantial computational resources: namely, docking of single compound requires few CPU-seconds, yielding 10's of CPU-years for the whole library, or tens of thousands dollars of computational costs at cloud services such as Google Cloud or Amazon Web Services \cite{irwin_large_2023,grebner_virtual_2020}.
+Within this framework, a concept of an ultra-large library docking has emerged in the last few years. It is used for the rapid discovery of high-affinity hit compounds, without iterative optimizations of initial hits. In this approach, an ultra-large (typically, 10's of millions of compounds) library is screened against a known target via structure-based docking. Molecules with the lowest docking score undergo subsequent filtering, and selected compounds (few 100's) are tested experimentally \cite{bender_practical_2021}. Most studies involve using virtual libraries, such as Enamine REAL \cite{noauthor_real_nodate}. Their design ensures high synthesizability rate, thereby providing a sufficiently large number of actually tested compounds regardless of the target.
+
+Recently, ultra-large library docking has shown to provide high-affinity hit compounds for various targets \cite{sigma2_paper, melatonin_paper, ultralarge_docking_first, gorgulla_open-source_2020, beroza_chemical_2022, noauthor_large_nodate, lu_structure-guided_2021, sadybekov_synthon-based_2022, sadybekov_structure-based_2020} after experimental testing of only few hundreds of compounds. However, such approach requires substantial computational resources: namely, docking of single compound requires few CPU-seconds, yielding 10's of CPU-years for the whole library, which in turn equals tens of thousands dollars of computational costs at cloud services such as Google Cloud or Amazon Web Services \cite{irwin_large_2023,grebner_virtual_2020}.
 
 Few approaches to reduce computational requirements have been proposed recently. First, multiple groups have applied active learning for iterative selection of compounds subjected to docking \cite{Graff2021AcceleratingLearning,autoencoders_guided_learning,logistic_regression,deepdocking,leandocking,Yang2021_shoichet_active_learning}. The active learning loops are based on prediction of docking scores from binary fingerprints of compounds. Prediction of scores is performed using either deep learning approaches \cite{deepdocking,Yang2021_shoichet_active_learning,autoencoders_guided_learning, Graff2021AcceleratingLearning} or simpler linear models \cite{leandocking,logistic_regression}. Moreover, de Graaf et al explored classic recommending system approaches for within active learning framework \cite{Graff2021AcceleratingLearning}. 
 
-Other approaches in this area explored genetic algorithms for acceleration of virtual screening \cite{Jensen2019,Ree2021}, as well as for multi-objective optimization \cite{Steinmann2021}. Finally, most recent approaches, such as V-SYNTHES \cite{Sadybekov2021_vsynthes} rely on the inner structure of ultra-large libraries to substantially reduce the computational requirements in fragment-based manner.
+Most of these approaches report multiple reduction of the computational costs for the docking itself: Gentile et al report up to 100-fold data reduction, de Graaf et al report finding of 95\% of the top-50\ 000 of the library after screening only 2.5\% of it, confirmed by Martin \cite{logistic_regression} in the later study. Finally, Yang et al \cite{Yang2021_shoichet_active_learning} recently reported finding more than 80\% of the experimentally confirmed hits with a 14-fold reduction in compute cost.
 
-In this work, we further explore the active learning approach in accelerated molecular docking. We benchmark classical machine learning algorithms in a single-shot docking score prediction task and compare their ability to retrieve top-1\% compounds from a large library. Moreover, we provide an "upper bond" for such task via performing a second docking with a different random seed value. Next, we compare different designs of the active learning loop, and find that it benefits from smaller batch sizes, despite reversed performance in single-shot task. Finally, we conclude that due to an intrinsically inaccurate nature of structure-guided virtual screening task, linear regression is the most suitable method for active learning loop design. We hope that our findings will guide designs of computationally effective accelerated docking pipelines, and facilitate rapid drug discovery campaigns using structure-based drug design.
+Finally, most recent approaches \cite{Sadybekov2021_vsynthes,beroza_chemical_2022} rely on the inner structure of ultra-large libraries to substantially reduce the computational requirements in fragment-based manner, leading to finding rapid hit finding for such targets as ROCK1 kinase and human cannabinoid receptors 1 and 2 with docking less than 1\% of the whole library.
+
+% Other approaches to accelerate different screening processes have been also proposed, including ... and .... Moreover, generative molecule design have been proposed as a fundamentally different approach for rapid hit finding, as reviewed in ...
+
+% Other approaches in this area explored genetic algorithms for acceleration of virtual screening \cite{Jensen2019,Ree2021}, as well as for multi-objective optimization \cite{Steinmann2021}. 
 
 
-% Seminal papers:
+In this work, we further explore the active learning approach to accelerate ultra-large structure-based virtual screening. We generate syntetic datasets of docking scores of 1 million molecules from ZINC20 \cite{Irwin2020ZINC20Discovery} for two targets, human adenosine receptor A2 (AA2AR) and human cannabinoid receptor 2 (CB2) using Molsoft ICM, as well as use existing open-access datasets from recent studies \cite{ultralarge_docking_first}. We benchmark classical machine learning algorithms in a single-shot docking score prediction task and compare their ability to retrieve top-1\% compounds from a large library. Based on that, we test our ability to extrapolate single-shot prediction results to the active learning regime. After that, we test multiple active learning regime parameters, such as information exchange between different steps of the active learning, as well as different ensembling mechanisms.
+
+We show that simplest models such as linear regression, with training and inference time under 1 munite, perform as well as much more complex regression models such as random forest regression, with few hours of inference time. We conclude that active learning regime benefits from as small batch size as $10\ 000$ molecules. For the active learning, we find that models with a simple memory mechanism confidently outperform other models. We also find that memory-less active learning regime provides comparable results for the screening, paving the way towards the design of the active learning models design with low computational costs. With simple linear models, we report discovery 50-90\% of top-1\% of the virtual hits, depending on target, after screening only 10\% of the 1 million library.
  
-%  - ultra-large docking (AmpC and D4)
-%  - MT1 and sigma-1 receptor
-%  - V-SYNTHES
-
-% Review papers:
-% 	- review of different chemical spaces
-% 		- all on-demand spaces are combinatorial
-% 		- enumerated spaces are probably not, but synthesisability may vary
-% 	- "ultra-large" cheminformatics review
-% 		- similarity and pharmacophore searches are already relatively fast
-% 	- Shoichet's guide to large-scale docking campaings 
-
-% Technical papers
-%  - deep docking
-%  	- first of its kind
-%  	- large database
-%  	- first showed substantial reduction (median 20x)
-%  	- heavy model (Keras + V100 GPU)
-%  - de Graaf et al
-%  	- tried not only docking but some QM
-%  	- explored recommending systems approaches
-%  - Shoichet group paper (2021)
-%  	- also heavy model (DeepChem)
-%  - preprint about logistic regression
-%  	- tried different fingerprints
-%  	- compared themselves with de Graaf et al 
-%  	- probably first lightweight model
-%  - lean docking
-%  	- not really interesting
-%  	- lightweight model
-%  	- don't talk about "virtual hits"
-
-% Other approaches:
-% 	- generative modelling (cite some review)
-% 	- genetic algorithms 
-% 	- v-synthes + biosolveit's similar approach
-
-% Why are we interesting:
-% 	- compare different "classical" models
-% 	- "explore" exploration-exploitation tradeoff using docking inaccuarcy (many other papers point that out)
-% 	- show two different docking algorithms
-% 	- prove that lightweight models are very good
-% 	- show "upper bound" for the model
-% 	- we measure time and compare it to actual docking
+Overall, we believe that our findings confirm that simple models are as efficient as previously used deep-learning based models for predicting the intrinsically inaccurate results of the structure-based molecular docking. We hope that our findings will guide designs of computationally effective accelerated docking pipelines, and facilitate rapid drug discovery campaigns using structure-based drug design.
