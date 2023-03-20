@@ -1,5 +1,27 @@
 \begin{abstract}
 
-This will be written much later.
+% - One or two sentences providing a basic introduction to the field, comprehensible to a scientist in any discipline
+Structure-based drug discovery is a framework suitable for both hit finding and optimization. It relies on the presence of a validated three-dimensional model of a target biomolecule, used to rationalise structure-function relationship for this particular target.
+
+% - Two to three sentences of more detailed background, comprehensible to scientists in related disciplines
+Recently, a concept of an ultra-large virtual screening for has emerged for rapid discovery of high-affinity hit compounds. In this concept, an ultra-large library of already available or rapidly synthesizable compounds is docked into a target of interest, highest-scored compounds are filtered, clustered, and few hundreds of them get tested experimentally. It was shown that such an approach can yield high-affinity hits (from sub-micromolar to low-nanomolar) for various targets, including G-protein coupled receptors and COVID-19 main protease MPro.
+
+% - One sentence clearly stating the general problem being addressed by this particular study.
+However, such screening requires substantial computational resources (100's of years of CPU time, or 10's of thousands of dollars according to cloud platform prices), making it inaccessible for many academic groups worldwide.
+
+% - One sentence summarising the main result (with the words "here we show" or their equivalent)
+Here we show that it is possible to exploit active learning that relies on simple linear regression models to accelerate such virtual screening and retrieve up to 90\% of the top-1\% of the docking hit-list after docking only 10\% of the ligands.
+
+% - Two or three sentences explaining what the main result reveals in direct comparison to what was thought to be the case previously, or how the main result adds to previous knowledge
+Previously, it was well established that such acceleration is possible using models based on deep-learning approaches, which require access to high-end GPUs and substantial training and inference time. In our work, we show that to predict the results of the intrinsically inaccurate ligand docking with low ligand sampling depth, it is enough to use simple linear regression models, and subsequent improvement in model complexity does not improve the prediction quality. Moreover, we explore the active learning meta-parameters, and find that constant batch size models with simple ensembling method provide the best ligand retrieval rate.
+
+% - One or two sentences to put the results into a more general context
+Overall, this work finds simple approach for the computationally undemanding accelerated virtual screening.
+
+% - Two or three sentences to provide a broader perspective, readily comprehensible to a scientist in any discipline, may be included in the first paragraph if the editor considers that the accessibility of the paper is significantly enhanced by their inclusion. Under these circumstances, the length of the paragraph can be up to 300 words. 
+
+We hope that it will serve as a blueprint for the future design of low-compute agents for exploration of the chemical space via large-scale accelerated docking. Coupled with recent breakthroughs in protein structure prediction, this can significantly increase accessibility of such methods for the academic community, providing us with the rapid discovery of high-affinity hit compounds for various targets.
+
+(The above section is 370 and 2540 characters).
 
 \end{abstract}
