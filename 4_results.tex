@@ -23,7 +23,7 @@ The meta-parameters of the active regime focused on adding memory of the docking
 
 Models perform drastically differrent with different datasets: while for AmpC dataset, around 90\% of the VSHs are found already after screening the first 10\%, for the CB2 dataset even the best late recall is around 80\%, also requiring three times as much ligands docked. Besides, the relative model performances between different datasets are more clear.
 
-For different meta-parameters, the decrease of the training size is also beneficial here (Figure \ref{tab:tab_1_activelearning}), in agreement to the memory-less regime and the extrapolation of single-shot results. For different datasets, the smallest vs. largest batch size (40 000 vs 8 000) results in 2-3 times difference in the early recall, although difference in late recall is less significant.
+For different meta-parameters, the decrease of the training size is also beneficial here (Table \ref{tab:tab_1_activelearning}), in agreement to the memory-less regime and the extrapolation of single-shot results. For different datasets, the smallest vs. largest batch size (40 000 vs 8 000) results in 2-3 times difference in the early recall, although difference in late recall is less significant.
 
 Adding simple model ensembling via either MeanRank or TopFromEveryModel mechanism, or simply increasing train size (LastModel with "add" parameter) confidently boosts performance: both early and late recall is 10-15 percent points higher for all the models with a memory mechanism.
 
