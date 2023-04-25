@@ -1,49 +1,49 @@
-\begin{figure}[ht]
-\centering
-\includegraphics[width=1.0\textwidth]{figures/figure_1_scores_distribution.png}
-\caption{Distributions of scores for datasets used in the study. Histogram (blue) shows log-scale score distribution, while plot (orange) shows cumulative distribution of scores. Vertical line (black) shows cutoff for top-1\% of scores.}
-\label{fig:fig_1_distribution}
-\end{figure}
+% \begin{figure}[ht]
+% \centering
+% \includegraphics[width=1.0\textwidth]{figures/figure_1_scores_distribution.png}
+% \caption{Distributions of scores for datasets used in the study. Histogram (blue) shows log-scale score distribution, while plot (orange) shows cumulative distribution of scores. Vertical line (black) shows cutoff for top-1\% of scores.}
+% \label{fig:fig_1_distribution}
+% \end{figure}
 
 
-\begin{figure}[ht]
-\centering
-\includegraphics[width=1.0\textwidth]{figures/Figure_2_v4.pdf}
-\caption{Overview of the different ensembling approaches in the active learning regime.}
-\label{fig:fig_2_scheme}
-\end{figure}
+% \begin{figure}[ht]
+% \centering
+% \includegraphics[width=1.0\textwidth]{figures/Figure_2_v4.pdf}
+% \caption{Overview of the different ensembling approaches in the active learning regime.}
+% \label{fig:fig_2_scheme}
+% \end{figure}
 
 
-\begin{figure}[ht]
-\centering
-\includegraphics[width=1.0\textwidth]{figures/figure_3_single-shot-performance.png}
-\caption{Model performance for multiple regression models and their baselines on 4 datasets present in the study. Rows represent different datasets, columns show different training size. Values for five independent folds are shown.}
-\label{fig:fig_3_singleshot}
-\end{figure}
+% \begin{figure}[ht]
+% \centering
+% \includegraphics[width=1.0\textwidth]{figures/figure_3_single-shot-performance.png}
+% \caption{Model performance for multiple regression models and their baselines on 4 datasets present in the study. Rows represent different datasets, columns show different training size. Values for five independent folds are shown.}
+% \label{fig:fig_3_singleshot}
+% \end{figure}
 
 
-\begin{figure}[ht]
-\centering
-\includegraphics[width=1.0\textwidth]{figures/figure_4_iterations.png}
-\caption{Comparison of the single-shot extrapolation with the simplest active learning model. Plots show cumulative percentage of hits vs percentage of the library docked, for different regimes: "LinearRegression" (actual active learning model), "RandomGaussianRegressor" (random docking score assignment baseline), "DockingAsPredictor" (using independent docking run to obtain upper-bond baseline), "Estimator" extrapolation from a single-shot performance of a LinearRegression base model.}
-\label{fig:fig_4_extrapolation}
-\end{figure}
+% \begin{figure}[ht]
+% \centering
+% \includegraphics[width=1.0\textwidth]{figures/figure_4_iterations.png}
+% \caption{Comparison of the single-shot extrapolation with the simplest active learning model. Plots show cumulative percentage of hits vs percentage of the library docked, for different regimes: "LinearRegression" (actual active learning model), "RandomGaussianRegressor" (random docking score assignment baseline), "DockingAsPredictor" (using independent docking run to obtain upper-bond baseline), "Estimator" extrapolation from a single-shot performance of a LinearRegression base model.}
+% \label{fig:fig_4_extrapolation}
+% \end{figure}
 
-\begin{table}[!ht]
-    \centering
-    \begin{adjustbox}{angle=90}
-        \resizebox{1.2\textwidth}{!}
-        {
-            \input{tables/table_1}
-        }
-    \end{adjustbox}
-    \caption{Figure 5: Recall score of the early stage (after 10\% library screened) and late stage (after 30\% library screened). Errors represent standard deviation within five independent folds.}
-    \label{tab:tab_1_activelearning}
-\end{table}
+% \begin{table}[!ht]
+%     \centering
+%     \begin{adjustbox}{angle=90}
+%         \resizebox{1.2\textwidth}{!}
+%         {
+%             \input{tables/table_1}
+%         }
+%     \end{adjustbox}
+%     \caption{Figure 5: Recall score of the early stage (after 10\% library screened) and late stage (after 30\% library screened). Errors represent standard deviation within five independent folds.}
+%     \label{tab:tab_1_activelearning}
+% \end{table}
 
-\begin{figure}[ht]
-\centering
-\includegraphics[width=1.0\textwidth]{figures/Supp_Figure_1_execution_time.png}
-\caption{Execution time (log scale) of the train-predict loop of the algorithms evaluated in single-shot regime. Rows represent different datasets, columns -- different training size. Values for five independent folds are shown.}
-\label{fig:supp_fig_1_execution_time}
-\end{figure}
+% \begin{figure}[ht]
+% \centering
+% \includegraphics[width=1.0\textwidth]{figures/Supp_Figure_1_execution_time.png}
+% \caption{Execution time (log scale) of the train-predict loop of the algorithms evaluated in single-shot regime. Rows represent different datasets, columns -- different training size. Values for five independent folds are shown.}
+% \label{fig:supp_fig_1_execution_time}
+% \end{figure}

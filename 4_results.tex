@@ -7,12 +7,33 @@ Figure \ref{fig:fig_3_singleshot} clearly shows that the tested models have perf
 
 Also, the increase in the training dataset size does not lead to significant improvements in the models performance, in line with previously observed results \cite{Yang2021_shoichet_active_learning}. Despite that, "heavyweight" models such as RandomForestRegressor, seem to benefit by that more, compared to more "lightweight" linear models, which seem to saturate at train size around $160\ 000$ \ref{fig:fig_3_singleshot}.
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/figure_3_single-shot-performance.png}
+\caption{Model performance for multiple regression models and their baselines on 4 datasets present in the study. Rows represent different datasets, columns show different training size. Values for five independent folds are shown.}
+\label{fig:fig_3_singleshot}
+\end{figure}
+
 Linear models also show more stable performance across the datasets: namely, default LinearRegression and LinearSVR show recall score similar to that of RandomForestRegressor on all datasets except for CB2, where LinearRegression shows twice smaller recall values compared to RandomForestRegressor. Interestingly, adding regularization to linear models does not increase their performance, as seen by LassoCV and RidgeCV performance.
 
 Notably, the execution time (Figure \ref{fig:supp_fig_1_execution_time}) for the linear regression remains within few minutes, whereas more "heavyweight" algorithms take up to 100 times more for the train-predict loop even on a million-sized library, while previous works reported up to 1 day of train-predict time using modern GPUs \cite{deepdocking}.
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/Supp_Figure_1_execution_time.png}
+\caption{Execution time (log scale) of the train-predict loop of the algorithms evaluated in single-shot regime. Rows represent different datasets, columns -- different training size. Values for five independent folds are shown.}
+\label{fig:supp_fig_1_execution_time}
+\end{figure}
+
 \subsection{Extrapolation of single-shot results}
 Following the robust performance of LinearRegression in the single-shot regime, we compared the active learning regime with extrapolation from a single-shot performance, as summarized in figure \ref{fig:fig_4_extrapolation}. It is clear that for the large batch size (40 000 or 20 000), extrapolation can reliably predict an outcome of the memory-less active learning. However, with the decrease of the batch size, extrapolation seems to be overestimating the performance. Despite that, the superior performance of active learning with smaller batch size is still obvious.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/figure_4_iterations.png}
+\caption{Comparison of the single-shot extrapolation with the simplest active learning model. Plots show cumulative percentage of hits vs percentage of the library docked, for different regimes: "LinearRegression" (actual active learning model), "RandomGaussianRegressor" (random docking score assignment baseline), "DockingAsPredictor" (using independent docking run to obtain upper-bond baseline), "Estimator" extrapolation from a single-shot performance of a LinearRegression base model.}
+\label{fig:fig_4_extrapolation}
+\end{figure}
 
 It is worth noticing that results of the simple active learning model go in line with the previous results (Graff et al. \cite{Graff2021AcceleratingLearning}, as shown in figure 5): namely, after exploring six hundred thousands molecules, models with smaller batch size (0.1\%) consistently find more molecules than those with larger batch sizes (0.2\% and 0.4\%). We believe that the absolute number of docked ligands, and not the number of active learning steps, is more suitable scale for this case, since the docking itself, especially in our case of lightweight models, is the most time-consuming step.
 
@@ -21,7 +42,7 @@ Interestingly, when a second docking run is used as a docking score predictor, i
 \subsection{Optimal parameters of the active learning regime}
 The meta-parameters of the active regime focused on adding memory of the docking results between different batches, as well as increasing the training size between batches. Here we discuss the \textit{early} recall (percentage of VSHs obtained after docking approx. 10\% of the library) and \textit{late} recall (after docking 30\% of the library).
 
-Models perform drastically differrent with different datasets: while for AmpC dataset, around 90\% of the VSHs are found already after screening the first 10\%, for the CB2 dataset even the best late recall is around 80\%, also requiring three times as much ligands docked. Besides, the relative model performances between different datasets are more clear.
+As summarized in table \ref{tab:tab_1_activelearning}, models perform drastically differrent with different datasets: while for AmpC dataset, around 90\% of the VSHs are found already after screening the first 10\%, for the CB2 dataset even the best late recall is around 80\%, also requiring three times as much ligands docked. Besides, the relative model performances between different datasets are more clear.
 
 For different meta-parameters, the decrease of the training size is also beneficial here (Table \ref{tab:tab_1_activelearning}), in agreement to the memory-less regime and the extrapolation of single-shot results. For different datasets, the smallest vs. largest batch size (40 000 vs 8 000) results in 2-3 times difference in the early recall, although difference in late recall is less significant.
 
@@ -32,3 +53,15 @@ However, differences in model performance with different memory mechanisms are l
 Interestingly, gradual increase of the train size does not boost the overall performance of the active learning regime. It increases the performance for the LastModel ensembling, effectively adding memory to the model. However, it does not increase the overall performance of other models, which already have implicit memory mechanisms. It agrees well with the single-shot performance results and the choice of simple LinearRegression models, that seem to saturate in their performance at around $16\ 000$ batch size.
 
 Also even though the memory-less LastModel regime shows worse performance compared to others, it is still considerably higher than the performance of the random choice screening. For example, for the least performative CB2 dataset, it still finds around 34\% of the VSHs after screening only 10\% of ligands, around half of the VSHs for D4 and AA2AR datasets, and 86\% VSHs for the AmpC dataset.
+
+\begin{table}[!ht]
+    \centering
+    \begin{adjustbox}{angle=90}
+        \resizebox{1.2\textwidth}{!}
+        {
+            \input{tables/table_1}
+        }
+    \end{adjustbox}
+    \caption{Figure 5: Recall score of the early stage (after 10\% library screened) and late stage (after 30\% library screened). Errors represent standard deviation within five independent folds.}
+    \label{tab:tab_1_activelearning}
+\end{table}
