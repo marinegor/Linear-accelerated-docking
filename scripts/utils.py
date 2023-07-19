@@ -7,8 +7,8 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-from sklearnex.linear_model import LinearRegression
-from typing import Callable, Iterable
+from sklearn.linear_model import LinearRegression
+from typing import Callable, Iterable, Sequence
 from sklearn.model_selection import KFold
 
 from functools import wraps
@@ -61,7 +61,6 @@ class Database:
         self.df_raw = df
         return df
 
-    @timing
     def _write_to_disk(
         self, out_filename: str, df: pd.DataFrame, column: str, force: bool = False
     ):
@@ -91,7 +90,7 @@ class Database:
 
     @timing
     def get_filenames_for(self, column: str) -> list[Path]:
-        return sorted(Path(f"{self.path}/{column}").iterdir())
+        return tuple(sorted(Path(f"{self.path}/{column}").iterdir()))
 
     @timing
     def read_column(self, column: str, idx: np.ndarray = None) -> np.ndarray:
@@ -137,6 +136,7 @@ class Database:
         ).compute(n_workers=n_parts)
         return agg_func(results)
 
+    @timing
     def get_random_batch(self, batchsize: int) -> tuple[np.ndarray, np.ndarray]:
         scores = self.read_column("dockscore")
         idx = np.arange(len(scores))
@@ -144,30 +144,9 @@ class Database:
         rv_scores = scores[rv_idx]
         return rv_idx, rv_scores
 
-    def read_dataframe_for(
-        self,
-        ids: list[int],
-        columns: list[str] = ["zincid", "dockscore", "fingerprints"],
-    ) -> pd.DataFrame:
-        rv = pd.DataFrame()
-        for column in columns:  # FIXME
-            batches = self.get_filenames_for(column)
-            tasks = delayed(
-                [_read_subset_helper(batch, ids, column) for batch in batches]
-            )
-            results = tasks.compute(n_workers=32)
-            rv[column] = np.hstack(results)
-        return rv
-
 
 def _replace_column_name(p: Path, target: str) -> Path:
     return p.parent.parent / target / p.name
-
-
-@delayed
-def _read_subset_helper(filename: str, ids: list[int], column: str) -> pd.DataFrame:
-    df = pd.read_parquet(filename)
-    return df[df.index.isin(ids)][column].values
 
 
 @delayed
@@ -203,21 +182,19 @@ def _read_fingerprints(filename: str, idx: np.ndarray) -> np.ndarray:
 
 
 @delayed
-def apply_model_to(filename: str, model: "OneShotModel") -> pd.DataFrame:
-    df = pd.read_parquet(filename).set_index("zincid")
-    X = np.vstack(df.fps.values)
+def apply_model_to(fingerprints_filename: str, model: "OneShotModel") -> np.ndarray:
+    X = pd.read_parquet(fingerprints_filename).values
     y = model.predict(X)
-    df["dockscore_pred"] = y
-    df = df[["dockscore_pred"]]
-    return df
+    return y
 
 
+@functools.lru_cache(maxsize=20)
 def apply_single_model_to(
-    filenames: list[str], model, n_parts: int = 12
+    filenames: tuple[str], model, n_parts: int = 32
 ) -> pd.DataFrame:
     computations = delayed([apply_model_to(filename, model) for filename in filenames])
-    dfs = computations.compute(scheduler="processes", n_workers=n_parts)
-    return pd.concat(dfs)
+    ypreds = computations.compute(scheduler="processes", n_workers=n_parts)
+    return np.hstack(ypreds)
 
 
 @delayed
@@ -226,12 +203,20 @@ def fit_model_to_data(model, X, y):
     return model
 
 
+def ordinal(x: np.ndarray) -> np.ndarray:
+    n = len(x)
+    r = np.zeros(n)
+    a = np.argsort(x)
+    r[a] = np.arange(n)
+    return r
+
+
 class OneShotModel:
     def __init__(self, n_splits: int = 5, regressor_factory: Callable = None):
         self.n_splits = n_splits
 
         if regressor_factory is None:
-            regressor_factory = lambda: LinearRegression(n_jobs=8)
+            regressor_factory = lambda: LinearRegression(n_jobs=32)
         self._regressor_factory = regressor_factory
 
     def fit(self, X: np.ndarray, y: np.ndarray):
@@ -260,7 +245,10 @@ class ActiveLearningModel:
         regime: str = "LastModel",
         oneshot_factory: Callable = None,
     ):
-        if regime not in ("LastModel", "MeanRank", "TopFromEveryModel"):
+        if regime not in (
+            "LastModel",
+            "MeanRank",
+        ):
             raise ValueError(f"Wrong {regime=}")
         self.regime = regime
 
@@ -272,10 +260,11 @@ class ActiveLearningModel:
         self.seen_molecules: dict[int, np.ndarray] = {}
         self.iteration = 0
 
+    @timing
     def add_iteration(
         self, scores: np.ndarray, ids: np.ndarray, fingerprints: np.ndarray
     ):
-        X = fps
+        X = fingerprints
         y = scores
 
         model = self._oneshot_factory()
@@ -285,25 +274,65 @@ class ActiveLearningModel:
         self.seen_molecules[self.iteration] = [ids]
         self.iteration += 1
 
-    def apply_to(self, db: Database) -> pd.DataFrame:
+    @timing
+    def get_preds_for(self, db: Database, ignore_seen: bool = True) -> np.ndarray:
         if self.regime == "LastModel":
-            return self._apply_with_lastmodel(db)
+            preds = self._apply_with_lastmodel(db)
+        elif self.regime == "MeanRank":
+            preds = self._apply_with_meanrank(db)
         else:
             raise NotImplementedError
 
-    def _apply_with_lastmodel(self, db: Database) -> pd.DataFrame:
+        seen_molecules = np.hstack([x for x in self.seen_molecules.values()])
+
+        if ignore_seen:
+            preds[seen_molecules] = float("inf")
+        return preds
+
+    @timing
+    def select_top_k(
+        self, db: Database, predictions: np.ndarray, top_k: int = None
+    ) -> np.ndarray:
+        predictions *= -1
+        top_k = db.chunksize if top_k is None else top_k
+        idx = np.argpartition(predictions, -top_k)[-top_k:]
+        return idx
+
+    def _apply_with_lastmodel(self, db: Database) -> np.ndarray:
         model = self.models[self.iteration - 1]
-        return apply_single_model_to(db.parquet_files, model)
+        return apply_single_model_to(db.get_filenames_for("fingerprints"), model)
+
+    def _apply_with_meanrank(self, db: Database) -> np.ndarray:
+        results_for_each_model = [
+            apply_single_model_to(db.get_filenames_for("fingerprints"), model)
+            for model in self.models.values()
+        ]
+        ordinals = [ordinal(arr) for arr in results_for_each_model]
+        return np.vstack(ordinals).mean(axis=0)
 
 
-if __name__ == "__main__":
-    batchsize = 10_000
-    num_iterations = 10
-    db = Database("D4_small")
-    model = ActiveLearningModel()
+# if __name__ == "__main__":
+#     print("IF")
+#     batchsize = 10_000
+#     num_iterations = 100
+#     model = ActiveLearningModel(regime="MeanRank")
+#     db = Database("D4_small", chunksize=batchsize)
+#     idx, scores = first_batch = db.get_random_batch(batchsize=batchsize)
+#     fps = db.read_column("fingerprints")[idx]
+# 
+#     for i in range(num_iterations):
+#         np.save(f"it_{i}", idx)
+# 
+#         model.add_iteration(scores, ids=idx, fingerprints=fps)
+# 
+#         predicted_scores = model.get_preds_for(db)
+#         idx = model.select_top_k(db, predicted_scores)
+#         fps = db.read_column("fingerprints")[idx]
+#         scores = db.read_column("dockscore")[idx]
 
-    idx, scores = first_batch = db.get_random_batch(batchsize=batchsize)
-    fps = db.read_column("fingerprints")[idx]
-
-    # for i in range(num_iterations):
-    #     model.add_iteration()
+# batchsize = 10_000
+# num_iterations = 10
+# db = Database("D4_small", chunksize=batchsize)
+# model = ActiveLearningModel()
+# idx, scores = first_batch = db.get_random_batch(batchsize=batchsize)
+# fps = db.read_column("fingerprints")[idx]
