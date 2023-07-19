@@ -35,7 +35,12 @@ class RawDataPath:
 
 
 class Database:
-    def __init__(self, which: str, chunksize: int = 50_000, read_raw_data: bool = True):
+    def __init__(
+        self,
+        which: str,
+        chunksize: int = 50_000,
+        initialize: bool = False,
+    ):
         if which.lower() == "d4":
             path = RawDataPath.D4
         elif which.lower() == "ampc":
@@ -50,10 +55,10 @@ class Database:
         self.raw = f"{self.path}/raw.csv"
         self.chunksize = chunksize
 
-        if read_raw_data:
+        if initialize:
             self.read_raw_data()
-        self.write_columns_in_batches()
-        self.add_fingerprints()
+            self.write_columns_in_batches()
+            self.add_fingerprints()
 
     @timing
     def read_raw_data(self):
@@ -86,7 +91,7 @@ class Database:
                     for idx, chunk in enumerate(np.array_split(df, n_splits))
                 ]
             )
-            computations.compute(n_workers=32)
+            computations.compute(n_workers=48)
 
     @timing
     def get_filenames_for(self, column: str) -> list[Path]:
@@ -105,7 +110,7 @@ class Database:
         func = delayed(func)
         batches = self.get_filenames_for(column)
         tasks = delayed([func(batch) for batch in batches])
-        results = tasks.compute(n_workers=32)
+        results = tasks.compute(n_workers=48)
         return agg(results)
 
     @timing
@@ -122,7 +127,7 @@ class Database:
                 for batch in self.get_filenames_for(column)
             ]
         )
-        tasks.compute(n_workers=32)
+        tasks.compute(n_workers=64)
 
     def _execute(
         self, df_func: Callable, agg_func: Callable, n_parts: int = 12, columns=None
@@ -140,7 +145,8 @@ class Database:
     def get_random_batch(self, batchsize: int) -> tuple[np.ndarray, np.ndarray]:
         scores = self.read_column("dockscore")
         idx = np.arange(len(scores))
-        rv_idx = np.random.choice(idx, size=(batchsize,))
+        np.random.shuffle(idx)
+        rv_idx = idx[:batchsize]
         rv_scores = scores[rv_idx]
         return rv_idx, rv_scores
 
@@ -162,7 +168,7 @@ def _fingerprint_helper(
         df = pd.read_parquet(input_filename)
         arr = np.vstack([smiles2fp(s) for s in df[column]])
         arr_as_df = pd.DataFrame(
-            arr, columns=[f"fp_{idx:04}" for idx in range(arr.shape[1])]
+            arr, columns=[f"fp_{idx:04}" for idx in range(arr.shape[1])], index=df.index
         )
         arr_as_df.to_parquet(output_filename)
 
@@ -216,7 +222,7 @@ class OneShotModel:
         self.n_splits = n_splits
 
         if regressor_factory is None:
-            regressor_factory = lambda: LinearRegression(n_jobs=32)
+            regressor_factory = lambda: LinearRegression(n_jobs=48)
         self._regressor_factory = regressor_factory
 
     def fit(self, X: np.ndarray, y: np.ndarray):
@@ -262,7 +268,7 @@ class ActiveLearningModel:
 
     @timing
     def add_iteration(
-        self, scores: np.ndarray, ids: np.ndarray, fingerprints: np.ndarray
+        self, scores: np.ndarray, idx: np.ndarray, fingerprints: np.ndarray
     ):
         X = fingerprints
         y = scores
@@ -271,7 +277,7 @@ class ActiveLearningModel:
         model.fit(X, y)
 
         self.models[self.iteration] = model
-        self.seen_molecules[self.iteration] = [ids]
+        self.seen_molecules[self.iteration] = [idx]
         self.iteration += 1
 
     @timing
@@ -311,24 +317,25 @@ class ActiveLearningModel:
         return np.vstack(ordinals).mean(axis=0)
 
 
-# if __name__ == "__main__":
-#     print("IF")
-#     batchsize = 10_000
-#     num_iterations = 100
-#     model = ActiveLearningModel(regime="MeanRank")
-#     db = Database("D4_small", chunksize=batchsize)
-#     idx, scores = first_batch = db.get_random_batch(batchsize=batchsize)
-#     fps = db.read_column("fingerprints")[idx]
-# 
-#     for i in range(num_iterations):
-#         np.save(f"it_{i}", idx)
-# 
-#         model.add_iteration(scores, ids=idx, fingerprints=fps)
-# 
-#         predicted_scores = model.get_preds_for(db)
-#         idx = model.select_top_k(db, predicted_scores)
-#         fps = db.read_column("fingerprints")[idx]
-#         scores = db.read_column("dockscore")[idx]
+if __name__ == "__main__":
+    batchsize = 10_000
+    num_iterations = 100
+    model = ActiveLearningModel(regime="MeanRank")
+    db = Database("D4_small", chunksize=batchsize)
+
+    idx, scores = first_batch = db.get_random_batch(batchsize=batchsize)
+    fps = db.read_column("fingerprints", idx=idx)
+
+    for i in range(num_iterations):
+        np.save(f"it_{i}", idx)
+
+        model.add_iteration(scores, idx=idx, fingerprints=fps)
+
+        predicted_scores = model.get_preds_for(db)
+
+        idx = model.select_top_k(db, predicted_scores)
+        fps = db.read_column("fingerprints", idx=idx)
+        scores = db.read_column("dockscore", idx=idx)
 
 # batchsize = 10_000
 # num_iterations = 10
