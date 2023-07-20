@@ -204,7 +204,11 @@ def apply_single_model_to(
 
 
 @delayed
-def fit_model_to_data(model, X, y):
+def fit_model_to_data(model, X, y, dropna: bool = True):
+    if dropna:
+        notnan_idx = ~np.isnan(y)
+        X = X[notnan_idx]
+        y = y[notnan_idx]
     model.fit(X, y)
     return model
 
@@ -316,30 +320,3 @@ class ActiveLearningModel:
         ordinals = [ordinal(arr) for arr in results_for_each_model]
         return np.vstack(ordinals).mean(axis=0)
 
-
-if __name__ == "__main__":
-    batchsize = 10_000
-    num_iterations = 100
-    model = ActiveLearningModel(regime="MeanRank")
-    db = Database("D4_small", chunksize=batchsize)
-
-    idx, scores = first_batch = db.get_random_batch(batchsize=batchsize)
-    fps = db.read_column("fingerprints", idx=idx)
-
-    for i in range(num_iterations):
-        np.save(f"it_{i}", idx)
-
-        model.add_iteration(scores, idx=idx, fingerprints=fps)
-
-        predicted_scores = model.get_preds_for(db)
-
-        idx = model.select_top_k(db, predicted_scores)
-        fps = db.read_column("fingerprints", idx=idx)
-        scores = db.read_column("dockscore", idx=idx)
-
-# batchsize = 10_000
-# num_iterations = 10
-# db = Database("D4_small", chunksize=batchsize)
-# model = ActiveLearningModel()
-# idx, scores = first_batch = db.get_random_batch(batchsize=batchsize)
-# fps = db.read_column("fingerprints")[idx]
