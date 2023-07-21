@@ -10,12 +10,15 @@ from tqdm import tqdm
 from sklearn.linear_model import LinearRegression
 from typing import Callable, Iterable, Sequence
 from sklearn.model_selection import KFold
+from retry import retry
 
 from functools import wraps
 from time import time
 
 
 def timing(f):
+
+    @retry(Exception, tries=1, delay=1)
     @wraps(f)
     def wrap(*args, **kw):
         ts = time()

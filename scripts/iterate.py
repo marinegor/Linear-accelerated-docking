@@ -3,9 +3,10 @@ import numpy as np
 
 if __name__ == "__main__":
     from dask.distributed import Client
-    client = Client(n_workers=32, threads_per_worker=2)
+    client = Client(n_workers=48, threads_per_worker=2, heartbeat_interval=1_000_000_000, timeout=10_000_000)
 
-    for name in ("AmpC", "D4"):
+    # for name in ("AmpC", "D4"):
+    for name in ("D4_small",):
         batchsize = 10_000
         num_iterations = 100
         model = ActiveLearningModel(regime="MeanRank")
