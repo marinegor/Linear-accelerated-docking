@@ -40,6 +40,7 @@ class Database:
         which: str,
         chunksize: int = 50_000,
         initialize: bool = False,
+        dropna: bool = True
     ):
         if which.lower() == "d4":
             path = RawDataPath.D4
@@ -54,6 +55,7 @@ class Database:
         self.which = which
         self.raw = f"{self.path}/raw.csv"
         self.chunksize = chunksize
+        self.dropna = dropna
 
         if initialize:
             self.read_raw_data()
@@ -63,6 +65,9 @@ class Database:
     @timing
     def read_raw_data(self):
         df = pd.read_csv(self.raw, engine="pyarrow")
+        if self.dropna:
+            df['dockscore'] = pd.to_numeric(df['dockscore'], errors='coerce')
+            df = df.dropna()
         self.df_raw = df
         return df
 
@@ -91,11 +96,12 @@ class Database:
                     for idx, chunk in enumerate(np.array_split(df, n_splits))
                 ]
             )
-            computations.compute(n_workers=48)
+            # computations.compute(n_workers=48, scheduler='processes')
+            computations.compute()
 
     @timing
     def get_filenames_for(self, column: str) -> list[Path]:
-        return tuple(sorted(Path(f"{self.path}/{column}").iterdir()))
+        return tuple(sorted([p for p in Path(f"{self.path}/{column}").iterdir() if p.suffix == '.parquet']))
 
     @timing
     def read_column(self, column: str, idx: np.ndarray = None) -> np.ndarray:
@@ -110,7 +116,8 @@ class Database:
         func = delayed(func)
         batches = self.get_filenames_for(column)
         tasks = delayed([func(batch) for batch in batches])
-        results = tasks.compute(n_workers=48)
+        # results = tasks.compute(n_workers=48, scheduler='processes')
+        results = tasks.compute()
         return agg(results)
 
     @timing
@@ -127,7 +134,8 @@ class Database:
                 for batch in self.get_filenames_for(column)
             ]
         )
-        tasks.compute(n_workers=64)
+        # tasks.compute(n_workers=64, scheduler='processes')
+        tasks.compute()
 
     def _execute(
         self, df_func: Callable, agg_func: Callable, n_parts: int = 12, columns=None
@@ -138,7 +146,8 @@ class Database:
                 df_func(self._read_df(filename, columns=columns))
                 for filename in self.parquet_files
             ]
-        ).compute(n_workers=n_parts)
+        ).compute()
+        # ).compute(n_workers=n_parts, scheduler='processes')
         return agg_func(results)
 
     @timing
@@ -187,19 +196,27 @@ def _read_fingerprints(filename: str, idx: np.ndarray) -> np.ndarray:
     return df.values
 
 
-@delayed
 def apply_model_to(fingerprints_filename: str, model: "OneShotModel") -> np.ndarray:
-    X = pd.read_parquet(fingerprints_filename).values
+    X = pd.read_parquet(fingerprints_filename, engine='fastparquet').values
     y = model.predict(X)
+    with open(f'{fingerprints_filename}.done', 'w') as fout:
+        print('DONE', file=fout)
     return y
 
 
 @functools.lru_cache(maxsize=20)
 def apply_single_model_to(
-    filenames: tuple[str], model, n_parts: int = 32
-) -> pd.DataFrame:
+    filenames: tuple[str], model, n_parts: int = 48
+) ->np.ndarray:
     computations = delayed([apply_model_to(filename, model) for filename in filenames])
-    ypreds = computations.compute(scheduler="processes", n_workers=n_parts)
+    # ypreds = computations.compute(scheduler="processes", n_workers=n_parts)
+    ypreds = computations.compute()
+
+    # from multiprocessing import Pool
+    # from functools import partial
+    # with Pool(n_processes=n_parts) as pool:
+    #     ypreds = pool.apply(partial(apply_model_to, model=model), filenames)
+
     return np.hstack(ypreds)
 
 
@@ -226,7 +243,7 @@ class OneShotModel:
         self.n_splits = n_splits
 
         if regressor_factory is None:
-            regressor_factory = lambda: LinearRegression(n_jobs=48)
+            regressor_factory = lambda: LinearRegression(n_jobs=4)
         self._regressor_factory = regressor_factory
 
     def fit(self, X: np.ndarray, y: np.ndarray):
@@ -237,7 +254,8 @@ class OneShotModel:
                 for idx, _ in kf.split(X, y)
             ]
         )
-        models = models.compute(n_workers=self.n_splits)
+        # models = models.compute(n_workers=self.n_splits)
+        models = models.compute()
         self.models = models
         return self
 
@@ -297,6 +315,10 @@ class ActiveLearningModel:
 
         if ignore_seen:
             preds[seen_molecules] = float("inf")
+        
+        for done in db.get_filenames_for('fingerprints'):
+            if done.suffix == '.done':
+                Path(done).unlink()
         return preds
 
     @timing

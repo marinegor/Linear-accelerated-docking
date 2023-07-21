@@ -2,11 +2,14 @@ from utils import Database, ActiveLearningModel
 import numpy as np
 
 if __name__ == "__main__":
-    for name in ("D4", "AmpC"):
+    from dask.distributed import Client
+    client = Client(n_workers=32, threads_per_worker=2)
+
+    for name in ("AmpC", "D4"):
         batchsize = 10_000
         num_iterations = 100
         model = ActiveLearningModel(regime="MeanRank")
-        db = Database(name, chunksize=batchsize)
+        db = Database(name)
 
         idx, scores = first_batch = db.get_random_batch(batchsize=batchsize)
         fps = db.read_column("fingerprints", idx=idx)
@@ -18,6 +21,8 @@ if __name__ == "__main__":
 
             predicted_scores = model.get_preds_for(db)
 
-            idx = model.select_top_k(db, predicted_scores)
+            idx = model.select_top_k(db, predicted_scores, top_k=batchsize)
             fps = db.read_column("fingerprints", idx=idx)
             scores = db.read_column("dockscore", idx=idx)
+
+        break
