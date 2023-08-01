@@ -1,13 +1,11 @@
 from utils import ActiveLearningModel, InMemoryDatabase, Database, IterativeDatabase
 import numpy as np
-import warnings
-
-warnings.simplefilter(action="ignore", category=FutureWarning)
+import pickle
 
 if __name__ == "__main__":
     # for name in ("D4",):
     # for name in ("D4_small",):
-    for name in ("D4_medium",):
+    for name in ("D4",):
         batchsize = 10_000
         num_iterations = 100
         model = ActiveLearningModel(regime="MeanRank")
@@ -26,4 +24,5 @@ if __name__ == "__main__":
             fps = db.read_column("fingerprints", idx=idx)
             scores = db.read_column("dockscore", idx=idx)
 
-        break
+            with open("{name}_model_{i}.pickle", "wb") as fout:
+                pickle.dump(model, fout)

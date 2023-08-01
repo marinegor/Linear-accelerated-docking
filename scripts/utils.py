@@ -102,7 +102,9 @@ class IterativeDatabase:
     @timing
     def add_fingerprints(self, column="smiles", compute_kwargs: dict = None):
         n_splits = len(self.df_raw) // (self.chunksize + 1)
-        batches = np.array_split(self.df_raw, n_splits)
+        df = self.df_raw.copy(deep=True)
+        batches = np.array_split(df, n_splits)
+        del df
         tasks = delayed(
             [
                 extend_with_fingerprints_and_write_to_disk(
@@ -117,9 +119,9 @@ class IterativeDatabase:
         if compute_kwargs is None:
             compute_kwargs = {
                 "scheduler": "processes",
-                "n_workers": 48,
+                "n_workers": 16,
                 "chunksize": 1,
-                "threads_per_worker": 2,
+                "threads_per_worker": 1,
             }
         tasks.compute(**compute_kwargs)
 
@@ -160,6 +162,7 @@ def extend_with_fingerprints_and_write_to_disk(
     fps = np.vstack([smiles2fp(s) for s in arr])
     df[colnames] = fps
     df.to_parquet(output_filename)
+    del df, fps
 
 
 class InMemoryDatabase:
