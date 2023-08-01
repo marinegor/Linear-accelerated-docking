@@ -6,10 +6,11 @@ if __name__ == "__main__":
     # for name in ("D4",):
     # for name in ("D4_small",):
     for name in ("D4",):
+    # for name in ("D4_medium",):
         batchsize = 10_000
         num_iterations = 100
         model = ActiveLearningModel(regime="MeanRank")
-        db = IterativeDatabase(name, chunksize=10_000)
+        db = IterativeDatabase(name, chunksize=10_000, force=True)
 
         idx, scores = first_batch = db.get_random_batch(batchsize=batchsize)
         fps = db.read_column("fingerprints", idx=idx)
@@ -24,5 +25,6 @@ if __name__ == "__main__":
             fps = db.read_column("fingerprints", idx=idx)
             scores = db.read_column("dockscore", idx=idx)
 
-            with open("{name}_model_{i}.pickle", "wb") as fout:
-                pickle.dump(model, fout)
+            for model_idx, submodel in enumerate(model.models):
+                with open(f"{name}_{i}_model_{model_idx}.pickle", "wb") as fout:
+                    pickle.dump(submodel, fout)

@@ -34,7 +34,7 @@ def timing(f):
 
 class RawDataPath:
     raw_data = "/storage/marinegor/github/wiselydock-server/data"
-    AmpC = f"{raw_data}/AmpC/"
+    AmpC = f"{raw_data}/AmpC"
     D4 = f"{raw_data}/D4"
     D4_small = f"{raw_data}/D4_small"
     D4_medium = f"{raw_data}/D4_medium"
@@ -68,7 +68,7 @@ class IterativeDatabase:
         self.folder = f"{self.path}/database"
         self.chunksize = chunksize
 
-        if not Path(self.folder).exists() or force:
+        if force or not Path(self.folder).exists():
             Path(self.folder).mkdir(exist_ok=True)
             self.read_raw_data()
             self.add_fingerprints()
@@ -102,14 +102,14 @@ class IterativeDatabase:
     @timing
     def add_fingerprints(self, column="smiles", compute_kwargs: dict = None):
         n_splits = len(self.df_raw) // (self.chunksize + 1)
-        df = self.df_raw.copy(deep=True)
-        batches = np.array_split(df, n_splits)
-        del df
+        batches = [obj.copy(deep=True) for obj in np.array_split(self.df_raw, n_splits)]
+        del self.df_raw
+
         tasks = delayed(
             [
                 extend_with_fingerprints_and_write_to_disk(
                     df=batch,
-                    output_filename=f"{self.folder}/batch_{i}.parquet",
+                    output_filename=f"{self.folder}/batch_{i:04d}.parquet",
                     fpsize=2**self.n_bits,
                     column=column,
                 )
@@ -139,13 +139,11 @@ class IterativeDatabase:
         scores = []
         for f in self.files:
             df = pd.read_parquet(f, engine="pyarrow")
-            scores.append(df.dockscore.values)
-        scores = np.hstack(scores)
-        idx = np.arange(len(scores))
-        np.random.shuffle(idx)
-        rv_idx = idx[:batchsize]
-        rv_scores = scores[rv_idx]
-        return rv_idx, rv_scores
+            scores.append(df.dockscore)
+        scores = pd.concat(scores)
+        idx = scores.sample(n=batchsize)
+        rv_scores = scores.loc[idx]
+        return idx, rv_scores
 
 
 @delayed
@@ -581,7 +579,7 @@ class ActiveLearningModel:
         model.fit(X, y)
 
         self.models[self.iteration] = model
-        self.seen_molecules[self.iteration] = [idx]
+        self.seen_molecules[self.iteration] = idx
         self.iteration += 1
 
     @timing
@@ -650,7 +648,7 @@ class ActiveLearningModel:
             return np.vstack(ordinals).mean(axis=0)
         elif isinstance(db, IterativeDatabase):
             ypreds_all = []
-            for f in db.files:
+            for f in tqdm(db.files, desc="going through database files"):
                 ypreds_all.append(
                     np.vstack(
                         [
