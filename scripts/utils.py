@@ -8,7 +8,7 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 from sklearn.linear_model import LinearRegression
-from typing import Callable
+from typing import Callable, Sequence
 from sklearn.model_selection import KFold
 
 import dask
@@ -38,6 +38,128 @@ class RawDataPath:
     D4 = f"{raw_data}/D4"
     D4_small = f"{raw_data}/D4_small"
     D4_medium = f"{raw_data}/D4_medium"
+
+
+class IterativeDatabase:
+    def __init__(
+        self,
+        which: str,
+        n_bits: int = 10,
+        dropna: bool = True,
+        chunksize: int = 1_000_000,
+        force: bool = False,
+    ):
+        if which.lower() == "d4":
+            path = RawDataPath.D4
+        elif which.lower() == "ampc":
+            path = RawDataPath.AmpC
+        elif which.lower() == "d4_small":
+            path = RawDataPath.D4_small
+        elif which.lower() == "d4_medium":
+            path = RawDataPath.D4_medium
+        else:
+            raise ValueError(f"wrong dataset name: {which=}")
+
+        self.path = Path(path).resolve()
+        self.which = which
+        self.raw = f"{self.path}/raw.csv"
+        self.dropna = dropna
+        self.n_bits = n_bits
+        self.folder = f"{self.path}/database"
+        self.chunksize = chunksize
+
+        if not Path(self.folder).exists() or force:
+            Path(self.folder).mkdir(exist_ok=True)
+            self.read_raw_data()
+            self.add_fingerprints()
+        self.read_files_list()
+
+    def read_files_list(self) -> list[Path]:
+        self.files = sorted(
+            [f for f in Path(f"{self.folder}").iterdir() if f.suffix == ".parquet"]
+        )
+        return self.files
+
+    @timing
+    def read_column(self, colname: str, idx: Sequence = None) -> np.ndarray:
+        rv = []
+        for f in self.files:
+            df = pd.read_parquet(f, engine="pyarrow")
+            if idx is not None:
+                df = df[df.index.isin(idx)]
+            rv.append(df)
+        df = pd.concat(rv)
+
+        if idx is not None:
+            df = df[df.index.isin(idx)]
+
+        if colname == "fingerprints":
+            fps_columns = list(sorted([c for c in df.columns if c.startswith("fps_")]))
+            return df[fps_columns].values
+        else:
+            return df[colname].values
+
+    @timing
+    def add_fingerprints(self, column="smiles", compute_kwargs: dict = None):
+        n_splits = len(self.df_raw) // (self.chunksize + 1)
+        batches = np.array_split(self.df_raw, n_splits)
+        tasks = delayed(
+            [
+                extend_with_fingerprints_and_write_to_disk(
+                    df=batch,
+                    output_filename=f"{self.folder}/batch_{i}.parquet",
+                    fpsize=2**self.n_bits,
+                    column=column,
+                )
+                for i, batch in enumerate(batches)
+            ]
+        )
+        if compute_kwargs is None:
+            compute_kwargs = {
+                "scheduler": "processes",
+                "n_workers": 48,
+                "chunksize": 1,
+                "threads_per_worker": 2,
+            }
+        tasks.compute(**compute_kwargs)
+
+    @timing
+    def read_raw_data(self):
+        df = pd.read_csv(self.raw, engine="pyarrow")
+        if self.dropna:
+            df["dockscore"] = pd.to_numeric(df["dockscore"], errors="coerce")
+            df = df.dropna().reset_index()
+        self.df_raw = df
+        return df
+
+    @timing
+    def get_random_batch(self, batchsize: int) -> tuple[np.ndarray, np.ndarray]:
+        scores = []
+        for f in self.files:
+            df = pd.read_parquet(f, engine="pyarrow")
+            scores.append(df.dockscore.values)
+        scores = np.hstack(scores)
+        idx = np.arange(len(scores))
+        np.random.shuffle(idx)
+        rv_idx = idx[:batchsize]
+        rv_scores = scores[rv_idx]
+        return rv_idx, rv_scores
+
+
+@delayed
+def extend_with_fingerprints_and_write_to_disk(
+    df: pd.DataFrame,
+    output_filename: str,
+    fpsize: int,
+    column: str = "smiles",
+):
+    generator = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=fpsize)
+    smiles2fp = lambda s: generator.GetFingerprintAsNumPy(Chem.MolFromSmiles(s))
+    arr = df[column].values
+    colnames = [f"fps_{i:04d}" for i in range(fpsize)]
+    fps = np.vstack([smiles2fp(s) for s in arr])
+    df[colnames] = fps
+    df.to_parquet(output_filename)
 
 
 class InMemoryDatabase:
@@ -71,7 +193,7 @@ class InMemoryDatabase:
         self.compute_kwargs = {
             "n_workers": self.n_workers,
             "scheduler": "processes",
-            "threads_per_worker":4,
+            "threads_per_worker": 4,
             "chunksize": 1,
         }
 
@@ -90,6 +212,23 @@ class InMemoryDatabase:
             df = df.dropna().reset_index()
         self.df_raw = df
         return df
+
+    @timing
+    def add_fingerprints(self, column="smiles", force: bool = False):
+        if force or not Path(self.prepared).exists():
+            all_smiles = self.read_column(column=column)
+            n_splits = 10 + len(all_smiles) // self.chunksize
+            tasks = np.array_split(all_smiles, n_splits)
+            tasks = delayed(
+                [
+                    _fingerprint_helper_inplace(task, fpsize=2**self.n_bits)
+                    for task in tasks
+                ]
+            )
+
+            results = np.vstack(dask.compute(tasks, **self.compute_kwargs)[0])
+            colnames = [f"fps_{i}" for i in range(results.shape[1])]
+            self.df_raw[colnames] = results
 
     @timing
     def read_prepared(self):
@@ -167,9 +306,10 @@ class Database:
 
         if not compute_kwargs:
             compute_kwargs = {
-                "n_workers": 32,
-                "threads_per_worker": 4,
+                "n_workers": 2,
+                "threads_per_worker": 1,
                 "scheduler": "processes",
+                "chunksize": 1,
             }
         self.compute_kwargs = compute_kwargs
 
@@ -296,7 +436,7 @@ def _fingerprint_helper(
     if force or not Path(output_filename).exists():
         generator = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=fpsize)
         smiles2fp = lambda s: generator.GetFingerprintAsNumPy(Chem.MolFromSmiles(s))
-        df = pd.read_parquet(input_filename, engine="fastparquet")
+        df = pd.read_parquet(input_filename, engine="pyarrow")
         arr = np.vstack([smiles2fp(s) for s in df[column]])
         arr_as_df = pd.DataFrame(
             arr, columns=[f"fp_{idx:04}" for idx in range(arr.shape[1])], index=df.index
@@ -315,21 +455,21 @@ def _fingerprint_helper_inplace(
 
 
 def _read_column_with_idx(filename: str, column: str, idx: np.ndarray) -> np.ndarray:
-    df = pd.read_parquet(filename, engine="fastparquet")
+    df = pd.read_parquet(filename, engine="pyarrow")
     if idx is not None:
         df = df[df.index.isin(idx)]
     return df[column].values
 
 
 def _read_fingerprints(filename: str, idx: np.ndarray) -> np.ndarray:
-    df = pd.read_parquet(filename, engine="fastparquet")
+    df = pd.read_parquet(filename, engine="pyarrow")
     if idx is not None:
         df = df[df.index.isin(idx)]
     return df.values
 
 
 def apply_model_to(fingerprints_filename: str, model: "OneShotModel") -> np.ndarray:
-    X = pd.read_parquet(fingerprints_filename, engine="fastparquet").values
+    X = pd.read_parquet(fingerprints_filename, engine="pyarrow").values
     y = model.predict(X)
     with open(f"{fingerprints_filename}.done", "w") as fout:
         print("DONE", file=fout)
@@ -375,21 +515,15 @@ class OneShotModel:
         self.n_splits = n_splits
 
         if regressor_factory is None:
-            regressor_factory = lambda: LinearRegression(n_jobs=4)
+            regressor_factory = lambda: LinearRegression(n_jobs=96)
         self._regressor_factory = regressor_factory
         self.compute_kwargs = compute_kwargs
 
     def fit(self, X: np.ndarray, y: np.ndarray):
         kf = KFold(n_splits=self.n_splits)
-        models = delayed(
-            [
-                fit_model_to_data(self._regressor_factory(), X[idx], y[idx])
-                for idx, _ in kf.split(X, y)
-            ]
-        )
-        models = models.compute(
-            n_workers=self.n_splits, scheduler="processes", chunksize=1
-        )
+        models = [
+            self._regressor_factory().fit(X[idx], y[idx]) for idx, _ in kf.split(X, y)
+        ]
         self.models = models
         return self
 
@@ -418,7 +552,7 @@ class ActiveLearningModel:
 
         if not compute_kwargs:
             compute_kwargs = {
-                "n_workers": 32,
+                "n_workers": 6,
                 "threads_per_worker": 1,
                 "scheduler": "processes",
             }
@@ -485,6 +619,13 @@ class ActiveLearningModel:
             model = self.models[self.iteration - 1]
             X = db.read_column("fingerprints")
             return model.predict(X)
+        elif isinstance(db, IterativeDatabase):
+            model = self.models[self.iteration - 1]
+            for f in db.files:
+                df = pd.read_parquet(f, engine="pyarrow")
+                fps_columns = [col for col in df if col.startswith("fps_")]
+                X = df[fps_columns].values
+            return model.predict(X)
         else:
             raise ValueError
 
@@ -504,5 +645,25 @@ class ActiveLearningModel:
             ]
             ordinals = [ordinal(arr) for arr in results_for_each_model]
             return np.vstack(ordinals).mean(axis=0)
+        elif isinstance(db, IterativeDatabase):
+            ypreds_all = []
+            for f in db.files:
+                ypreds_all.append(
+                    np.vstack(
+                        [
+                            ordinal(apply_single_model_to_filename(f, model))
+                            for model in list(self.models.values())[-self.memory_size :]
+                        ]
+                    ).mean(axis=0)
+                )
+            return np.hstack(ypreds_all).flatten()
         else:
             raise ValueError
+
+
+@functools.lru_cache(maxsize=1000)
+def apply_single_model_to_filename(f: Path, model: OneShotModel):
+    df = pd.read_parquet(f, engine="pyarrow")
+    fps_columns = [col for col in df if col.startswith("fps_")]
+    X = df[fps_columns].values
+    return model.predict(X)
