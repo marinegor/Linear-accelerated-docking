@@ -141,8 +141,8 @@ class IterativeDatabase:
             df = pd.read_parquet(f, engine="pyarrow")
             scores.append(df.dockscore)
         scores = pd.concat(scores)
-        idx = scores.sample(n=batchsize)
-        rv_scores = scores.loc[idx]
+        idx = scores.sample(n=batchsize).index
+        rv_scores = scores.loc[idx].values
         return idx, rv_scores
 
 
@@ -152,15 +152,17 @@ def extend_with_fingerprints_and_write_to_disk(
     output_filename: str,
     fpsize: int,
     column: str = "smiles",
+    force: bool = False,
 ):
-    generator = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=fpsize)
-    smiles2fp = lambda s: generator.GetFingerprintAsNumPy(Chem.MolFromSmiles(s))
-    arr = df[column].values
-    colnames = [f"fps_{i:04d}" for i in range(fpsize)]
-    fps = np.vstack([smiles2fp(s) for s in arr])
-    df[colnames] = fps
-    df.to_parquet(output_filename)
-    del df, fps
+    if not Path(output_filename).exists() or force:
+        generator = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=fpsize)
+        smiles2fp = lambda s: generator.GetFingerprintAsNumPy(Chem.MolFromSmiles(s))
+        arr = df[column].values
+        colnames = [f"fps_{i:04d}" for i in range(fpsize)]
+        fps = np.vstack([smiles2fp(s) for s in arr])
+        df[colnames] = fps
+        df.to_parquet(output_filename)
+        del df, fps
 
 
 class InMemoryDatabase:
@@ -528,10 +530,14 @@ class OneShotModel:
         self.models = models
         return self
 
-    def predict(self, X: np.ndarray) -> np.ndarray:
+    def predict(self, X: np.ndarray, n_splits: int = 10) -> np.ndarray:
         ypreds = np.zeros(X.shape[0])
+        idx = np.arange(X.shape[0])
+        parts = np.array_split(X, n_splits)
+        idxs = np.array_split(idx, n_splits)
         for model in self.models:
-            ypreds += model.predict(X)
+            for part, subidx in zip(parts, idxs):
+                ypreds[subidx] += model.predict(part)
         ypreds /= len(self.models)
         return ypreds
 

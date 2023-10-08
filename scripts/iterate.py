@@ -3,14 +3,14 @@ import numpy as np
 import pickle
 
 if __name__ == "__main__":
-    # for name in ("D4",):
-    # for name in ("D4_small",):
     for name in ("D4",):
-    # for name in ("D4_medium",):
-        batchsize = 10_000
+    # for name in ("D4_small",):
+    # for name in ("D4",):
+    # for name in ("AmpC"):
+        batchsize = 20_000
         num_iterations = 100
         model = ActiveLearningModel(regime="MeanRank")
-        db = IterativeDatabase(name, chunksize=10_000, force=True)
+        db = IterativeDatabase(name)
 
         idx, scores = first_batch = db.get_random_batch(batchsize=batchsize)
         fps = db.read_column("fingerprints", idx=idx)
