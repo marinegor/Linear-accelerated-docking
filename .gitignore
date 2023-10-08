@@ -5,3 +5,6 @@ data
 notebooks/.ipynb_checkpoints
 
 env/
+**/__pycache__
+*.npy
+*.pickle
