@@ -3,10 +3,7 @@ import numpy as np
 import pickle
 
 if __name__ == "__main__":
-    for name in ("D4",):
-    # for name in ("D4_small",):
-    # for name in ("D4",):
-    # for name in ("AmpC"):
+    for name in ("D4", "AmpC"):
         batchsize = 20_000
         num_iterations = 100
         model = ActiveLearningModel(regime="MeanRank")
